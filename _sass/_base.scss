@@ -47,7 +47,11 @@ img {
     vertical-align: middle;
 }
 
-
+img.emoji {
+    height: 18px;
+    width: 18px;
+    vertical-align: baseline;
+}
 
 /**
  * Figures
