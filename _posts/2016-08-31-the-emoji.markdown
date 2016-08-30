@@ -1,0 +1,242 @@
+---
+layout: post
+title:  "The Emoji, is not what you expected"
+date:   2016/08/31 16:53:00 +0800
+categories: Swift, iOS, Unicode
+---
+
+##### _Note: Because some browsers do not support some of those emoji, all the emoji in this article are presented as a picture and some of them in the code may not be displayed correctly. If you are curious about what the rendering in your browser looks like, open [Full Emoji Data, v4.0 — Beta][4] for the full emoji list._
+
+When I got the newest Beta version of the iOS 10, I found Apple had redrawn many emoji. And, some emoji they’ve provided now have the versions in both gender. For example, the emoji I usually used <img src="/assets/images/2016/08/emoji/1F64B.png" class="emoji">, now has a male version <img src="/assets/images/2016/08/emoji/1F64B+2642.png" class="emoji">.
+
+So, I wondered what it would be displayed on a device with iOS 9, so I sent it to someone. Very interesting, on an iOS 9 device, the new emoji <img src="/assets/images/2016/08/emoji/1F64B+2642.png" class="emoji"> displayed as **two** characters '<img src="/assets/images/2016/08/emoji/1F64B_iOS9.png" class="emoji"><img src="/assets/images/2016/08/emoji/2642.png" class="emoji">'.
+
+...well
+
+Both `String` and `Character` type in the Swift language store Unicode. So I knew this must be something about the Unicode.
+
+With some basic googling, I found a blog from the Unicode Consortium's site:
+
+> "A proposed update of UTR #51, Unicode Emoji (Version 4.0) is available for public review and feedback. This new version covers a total of 2,243 emoji, an increase from the 1,788 in Version 3.0.
+>
+> There are several important changes in the proposed update. Three existing symbols have been newly classified as emoji: U+2640 FEMALE SIGN, U+2642 MALE SIGN, and U+2695 STAFF OF AESCULAPIUS. These are used in sequences to represent additional professions and to make gender distinctions among emoji."
+>
+> Excerpt From: Unicode.org, [Proposed Update UTR #51, Unicode Emoji (Version 4.0)][1]
+
+So this symbol '<img src="/assets/images/2016/08/emoji/2642.png" class="emoji">' should be the `U+2642`, The male sign.
+
+It looks like the new male version is indeed combined from **two** Unicode symbols. So a `Character` is not **a** character any more?
+
+#### **Character**
+
+This is the definition of the Character in the Swift language. It stores something called 'Extended Grapheme Cluster'.
+
+{% highlight swift %}
+public struct Character : ExpressibleByExtendedGraphemeClusterLiteral, Hashable {
+  // ...
+}
+{% endhighlight %}
+
+> "Every instance of Swift’s Character type represents a single extended grapheme cluster. An extended grapheme cluster is a sequence of one or more Unicode scalars that (when combined) produce a single human-readable character."
+>
+> Excerpt From: Apple Inc. “The Swift Programming Language (Swift 3 beta).” iBooks. [https://itun.es/us/k5SW7.l][TSPL]
+
+Now let's have a brief introduction about how the Unicode handles emoji (after this, the `Character` in your mind is no longer a character you would have expected).
+
+#### **Unicode**
+
+> "Unicode is a computing industry standard for the consistent encoding, representation, and handling of text expressed in most of the world's writing systems."
+>
+> Excerpt From: Wikipedia.org, [Unicode][7]
+
+Then how the Unicode handles those characters?
+
+#### **Code Point**
+
+Unicode uses a unique _**code point**_ for each character. Every code point is an integer value. Normally a Unicode code point is written as "`U+hex`" form, like `U+0061` for the character 'a', `U+01F64B` for the emoji '<img src="/assets/images/2016/08/emoji/1F64B.png" class="emoji">'. Right now the size of code point is 21 bits, from `U+000000` to `U+10FFFF`.
+
+#### **Sequence**
+
+In addition to using one code point for a character, Unicode also uses a _**sequence**_ of two or more characters to represent some **abstract** characters.
+
+Every character in a sequence has its own roles, namely Base, Variation, Modifier, ZWJ, Combining Marks.
+
+**Base**
+
+Base character in a sequence is the character that can be modified by the subsequent modifier. Not all the characters can be modified in the same way.
+
+**Variation**
+
+Some characters may have two different presentations, one looks like an emoji and another looks more like a text character. Such as '<img src="/assets/images/2016/08/emoji/2618+FE0F.png" class="emoji">' and '<img src="/assets/images/2016/08/emoji/2618+FE0E.png" class="emoji">', they are just the different presentations for the same `U+2618` character.
+
+{% highlight swift %}
+"\u{2618}\u{FE0E}" ==> "☘︎"
+"\u{2618}\u{FE0F}" ==> "☘️"
+
+// \u{hex} is the Swift way for representing Unicode code point
+{% endhighlight %}
+
+In this code sample, we met **sequence**. Every hex number in the `\u{}` is a code point, and the following code point determines which presentation should be used.
+
+> U+FE0E VARIATION SELECTOR-15 (VS15) for a text presentation  
+> U+FE0F VARIATION SELECTOR-16 (VS16) for an emoji presentation
+>
+> Excerpt From: Unicode.org, [Unicode® Technical Report #51][2]
+
+The beautiful <img src="/assets/images/2016/08/emoji/2618+FE0F.png" class="emoji"> symbol is so called 'emoji presentation'.
+
+**Modifier**
+
+The mainly modifier currently is the **Emoji Fitzpatrick Type Modifier**
+
+Fitzpatrick type is a type of scale about skin colors. This modifier is the one that provide some emoji with different skin tones. <img src="/assets/images/2016/08/emoji/1F64B.png" class="emoji"> <img src="/assets/images/2016/08/emoji/1F64B+1F3FB.png" class="emoji">
+
+Let me show you in code:
+
+{% highlight swift %}
+"\u{01F64B}"           ==> "🙋"
+"\u{01F64B}\u{01F3FB}" ==> "🙋🏻"
+"\u{01F64B}\u{01F3FC}" ==> "🙋🏼"
+"\u{01F64B}\u{01F3FD}" ==> "🙋🏽"
+"\u{01F64B}\u{01F3FE}" ==> "🙋🏾"
+"\u{01F64B}\u{01F3FF}" ==> "🙋🏿"
+{% endhighlight %}
+
+Yes, they are not different emoji as many people would've expected, they are in fact the same emoji with different modifiers.
+
+The actually Unicode for those emoji is just one: `U+01F64B`. The subsequent modifier changes the skin tone in the presentation. So every such emoji would be a sequence of **two** Unicode code points. Every system that supports Unicode needs to deal with such sequences and display correct emoji pictures.
+
+In those systems which don't support this modifier, people will see something like this:
+
+{% highlight swift %}
+"\u{01F64B}\u{01F3FD}" ==> "🙋‌🏽"
+{% endhighlight %}
+
+The Fitzpatrick type modifier will be displayed as a color block <img src="/assets/images/2016/08/emoji/1F3FD.png" class="emoji">, and this block will be in the color of the skin tone scale it represented. So when you saw something like this <img src="/assets/images/2016/08/emoji/1F64B.png" class="emoji"><img src="/assets/images/2016/08/emoji/1F3FD.png" class="emoji">, it means that the author wanted to show you an emoji in such skin tone, however, your system or app hasn't supported the modifier yet.
+
+The Unicode Consortium defines that all the emoji with visible skin should support this Fitzpatrick type modifier. Those supported emoji are called **Emoji Modifier Base**. Only those **Emoji Modifier Base** can be combined with the modifier, that's why when you input emoji, only those emoji have **minipalette** of different skin tones.
+
+**ZWJ**
+
+`U+200D ZERO WIDTH JOINER` (the ZWJ) is a special code point in Unicode. It can be used between the elements in a sequence to indicate those elements should be combined as a single glyph, and it can be used multi times in a sequence. To better illustrate my point, let me give you an example that could blow your mind.
+
+{% highlight swift %}
+"\u{01F468}\u{200D}\u{002764}\u{00FE0F}\u{200D}\u{01F48B}\u{200D}\u{01F468}"
+ ==> "👨‍❤️‍💋‍👨"
+
+"\u{01F468}\u{200D}\u{01F469}\u{200D}\u{01F467}\u{200D}\u{01F466}"
+ ==> "👨‍👩‍👧‍👦"
+
+"\u{01F469}\u{200D}\u{01F680}"
+ ==> "👩‍🚀"
+
+"\u{01F469}\u{200D}\u{01F3A8}"
+ ==> "👩‍🎨"
+
+"\u{01F46E}\u{200D}\u{2642}\u{FE0F}"
+ ==> "👮‍♂️"
+
+"\u{01F46E}\u{200D}\u{2640}\u{FE0F}"
+ ==> "👮‍♀️"
+{% endhighlight %}
+
+Those are called **ZWJ sequences**
+
+Yes, they are certainly not 'characters' at all -- this is a type of 'description language'
+
+<img src="/assets/images/2016/08/emoji/1F468.png" class="emoji_middle"> + <img src="/assets/images/2016/08/emoji/2764.png" class="emoji_middle"> + <img src="/assets/images/2016/08/emoji/1F48B.png" class="emoji_middle"> + <img src="/assets/images/2016/08/emoji/1F468.png" class="emoji_middle"> = <img src="/assets/images/2016/08/emoji/Kiss.png" class="emoji_middle">  
+<img src="/assets/images/2016/08/emoji/1F468.png" class="emoji_middle"> + <img src="/assets/images/2016/08/emoji/1F469.png" class="emoji_middle"> + <img src="/assets/images/2016/08/emoji/1F467.png" class="emoji_middle"> + <img src="/assets/images/2016/08/emoji/1F466.png" class="emoji_middle"> = <img src="/assets/images/2016/08/emoji/Family.png" class="emoji_middle">  
+
+(the <img src="/assets/images/2016/08/emoji/2764.png" class="emoji"> here is in emoji presentation. Do you remember the `U+FE0F` in **Variation** section? It also is used here, because we are combining an 'emoji')
+
+Furthermore, we now have some 'description' for different professions.
+
+<img src="/assets/images/2016/08/emoji/1F469.png" class="emoji_middle"> + <img src="/assets/images/2016/08/emoji/1F680.png" class="emoji_middle"> = <img src="/assets/images/2016/08/emoji/1F469+1F680.png" class="emoji_middle">  
+<img src="/assets/images/2016/08/emoji/1F469.png" class="emoji_middle"> + <img src="/assets/images/2016/08/emoji/1F3A8.png" class="emoji_middle"> = <img src="/assets/images/2016/08/emoji/1F469+1F3A8.png" class="emoji_middle">
+
+The `U+2640` and `U+2642` we mentioned at the beginning of this article, are also combined by ZWJ with the modified emoji.
+
+<img src="/assets/images/2016/08/emoji/1F46E.png" class="emoji_middle"> + <img src="/assets/images/2016/08/emoji/2642.png" class="emoji_middle"> = <img src="/assets/images/2016/08/emoji/1F46E+2642.png" class="emoji_middle">  
+<img src="/assets/images/2016/08/emoji/1F46E.png" class="emoji_middle"> + <img src="/assets/images/2016/08/emoji/2640.png" class="emoji_middle"> = <img src="/assets/images/2016/08/emoji/1F46E+2640.png" class="emoji_middle">  
+
+and you can image more.
+
+So basically with this **ZWJ** we have something like an 'emoji description language'. We can expect more and more new emoji are 'described' without increasing the amount of code points, and more and more 'normal' characters or emoji can be combined for new purpose.
+
+**Combining Marks**
+
+Most of the combining marks are Diacritical Marks actually, check [Combining character][8] for more information about it.
+
+{% highlight swift %}
+"\u{65}"             ==> "e"
+"\u{0301}"           ==> " ‌́"
+"\u{65}\u{0301}"     ==> "é"
+{% endhighlight %}
+
+Basically, they are not emoji-related elements. But Unicode allows applying them to any character. Sometimes, we can use them with emoji for some special effects. Things like:
+
+{% highlight swift %}
+"\u{01F436}"         ==> "🐶"
+"\u{20E0}"           ==> "‌⃠"
+"\u{01F436}\u{20E0}" ==> "🐶⃠"
+{% endhighlight %}
+
+<img src="/assets/images/2016/08/emoji/1F436+20E0.png" class="emoji">...<img src="/assets/images/2016/08/emoji/1F914.png" class="emoji">
+
+#### **Counting a String, a.k.a 4 + 1 = 4**
+
+OK, so now, I think you may have a deeper understanding about why modern languages always say **'don't count a string by the memory it has consumed'**.
+
+Here is a **note** from Apple's 'The Swift Programming Language', talking about the count of the characters in a string:
+
+> “Extended grapheme clusters can be composed of one or more Unicode scalars. This means that different characters—and different representations of the same character—can require different amounts of memory to store. Because of this, characters in Swift do not each take up the same amount of memory within a string’s representation. As a result, the number of characters in a string cannot be calculated without iterating through the string to determine its extended grapheme cluster boundaries. If you are working with particularly long string values, be aware that the characters property must iterate over the Unicode scalars in the entire string in order to determine the characters for that string.
+>
+> The count of the characters returned by the characters property is not always the same as the length property of an NSString that contains the same characters. The length of an NSString is based on the number of 16-bit code units within the string’s UTF-16 representation and not the number of Unicode extended grapheme clusters within the string.”
+>
+> Excerpt From: Apple Inc. “The Swift Programming Language (Swift 3 beta).” iBooks. [https://itun.es/us/k5SW7.l][TSPL]
+
+And here is a simple test in the Playground:
+
+{% highlight swift %}
+let cafe = "cafe"
+let accent = "\u{0301}"
+
+cafe.characters.count   // 4
+accent.characters.count // 1
+
+let café = cafe + accent
+café.characters.count   // 4 + 1 = 4
+
+{% endhighlight %}
+
+But it is strange that the emoji with ZWJ sequence is considered as multi-character (although will be displayed as one character). I don't know if it's because I used a Beta version of Xcode 8.
+
+{% highlight swift %}
+"👨‍❤️‍💋‍👨".characters.count   // 4
+{% endhighlight %}
+
+#### **And there are more ...**
+
+Unicode is very complex indeed, and there are many other interesting things. For example, the flags in emoji are actually combined with **Regional Indicator characters**. Such as <img src="/assets/images/2016/08/emoji/CN.png" class="emoji"> for <img src="/assets/images/2016/08/emoji/1F1E8+1F1F4.png" class="emoji">, and <img src="/assets/images/2016/08/emoji/US.png" class="emoji"> means <img src="/assets/images/2016/08/emoji/1F1FA+1F1F8.png" class="emoji">, etc.
+
+I'll stop here. For anybody interested in learning more, here are the links for easy reference.
+
+1. [Proposed Update UTR #51, Unicode Emoji (Version 4.0)][1]
+2. [Unicode® Technical Report #51][2] (This one is a relatively comprehensive resource on emoji.)
+3. [Unicode® Emoji Charts v4.0 — Beta][3]
+4. [Full Emoji Data, v4.0 — Beta][4]
+5. [Text vs Emoji, v4.0 — Beta][5]
+6. [Draft data files for UTR #51 Unicode Emoji, Version 4.0][6]
+7. [Wikipedia: Unicode][7]
+8. [Wikipedia: Combining character][8]
+9. [The Swift Programming Language (Swift 3 beta)][TSPL]
+
+[1]: http://blog.unicode.org/2016/08/proposed-update-utr-51-unicode-emoji.html "Proposed Update UTR #51, Unicode Emoji (Version 4.0)"
+[2]: http://www.unicode.org/reports/tr51/tr51-8.html "Unicode® Technical Report #51"
+[3]: http://www.unicode.org/emoji/charts-beta/index.html "Unicode® Emoji Charts v4.0 — Beta"
+[4]: http://www.unicode.org/emoji/charts-beta/full-emoji-list.html "Full Emoji Data, v4.0 — Beta"
+[5]: http://www.unicode.org/emoji/charts-beta/text-style.html "Text vs Emoji, v4.0 — Beta"
+[6]: http://www.unicode.org/Public/emoji/4.0/ "draft data files for UTR #51 Unicode Emoji, Version 4.0"
+[7]: https://en.wikipedia.org/wiki/Unicode "Unicode"
+[8]: https://en.wikipedia.org/wiki/Combining_character "Combining character"
+[TSPL]: https://itun.es/us/k5SW7.l "The Swift Programming Language (Swift 3 beta)"

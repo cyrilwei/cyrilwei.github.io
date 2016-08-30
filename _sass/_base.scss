@@ -53,6 +53,12 @@ img.emoji {
     vertical-align: baseline;
 }
 
+img.emoji_middle {
+    height: 18px;
+    width: 18px;
+    vertical-align: middle;
+}
+
 /**
  * Figures
  */
@@ -136,7 +142,7 @@ code {
     font-size: 15px;
     border: 1px solid $grey-color-light;
     border-radius: 3px;
-    background-color: #eef;
+    background-color: #f0fff0;
 }
 
 code {
