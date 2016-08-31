@@ -2,7 +2,7 @@
 layout: post
 title:  "原来你是介样的emoji⁉️"
 date:   2016/08/31 16:53:00 +0800
-categories: Swift, iOS, Unicode
+categories: Swift
 published: false
 ---
 

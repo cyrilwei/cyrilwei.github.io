@@ -2,7 +2,7 @@
 layout: post
 title:  "The Emoji, is not what you expected"
 date:   2016/08/31 16:53:00 +0800
-categories: Swift, iOS, Unicode
+categories: Swift
 ---
 
 ##### _Note: Because some browsers do not support some of those emoji, all the emoji in this article are presented as a picture and some of them in the code may not be displayed correctly. If you are curious about what the rendering in your browser looks like, open [Full Emoji Data, v4.0 — Beta][4] for the full emoji list._
