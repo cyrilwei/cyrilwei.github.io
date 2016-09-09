@@ -116,6 +116,10 @@ The Fitzpatrick type modifier will be displayed as a color block <img src="/asse
 
 The Unicode Consortium defines that all the emoji with visible skin should support this Fitzpatrick type modifier. Those supported emoji are called **Emoji Modifier Base**. Only those **Emoji Modifier Base** can be combined with the modifier, that's why when you input emoji, only those emoji have **minipalette** of different skin tones.
 
+Here are the supported Fitzpatrick types from [Unicode® Technical Report #51][2]:
+
+<img src="/assets/images/2016/08/emoji/Fitz types.png" style="width: 480px">
+
 **ZWJ**
 
 `U+200D ZERO WIDTH JOINER` (the ZWJ) is a special code point in Unicode. It can be used between the elements in a sequence to indicate those elements should be combined as a single glyph, and it can be used multi times in a sequence. To better illustrate my point, let me give you an example that could blow your mind.
