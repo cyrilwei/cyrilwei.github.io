@@ -2,7 +2,8 @@
 layout: post
 title:  "Swift 3.0 - from Master back to Beginner"
 date:   2016/07/27 00:00:00 +0800
-categories: iOS
+categories: Swift
+published: false
 ---
 
 #### content
